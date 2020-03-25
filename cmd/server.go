@@ -29,11 +29,12 @@ import (
 
 // Configuration variables
 var (
-	listeningAddress       string
-	metricsEndpoint        string
-	scrapeURIs             []string
-	fixProcessCount        bool
-	disableExporterMetrics bool
+	listeningAddress           string
+	metricsEndpoint            string
+	scrapeURIs                 []string
+	fixProcessCount            bool
+	disableExporterMetrics     bool
+	disableProcessStateMetrics bool
 )
 
 // serverCmd represents the server command
@@ -49,13 +50,20 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("Starting server on %v with path %v", listeningAddress, metricsEndpoint)
 
-		pm := phpfpm.PoolManager{}
+		pm := phpfpm.PoolManager{
+			OutputFullStatus: !disableProcessStateMetrics,
+		}
 
 		for _, uri := range scrapeURIs {
 			pm.Add(uri)
 		}
 
 		exporter := phpfpm.NewExporter(pm)
+
+		if disableProcessStateMetrics {
+			fixProcessCount = false
+			exporter.DisableProcessStateMetrics = true
+		}
 
 		if fixProcessCount {
 			log.Info("Idle/Active/Total Processes will be calculated by php-fpm_exporter.")
@@ -139,6 +147,7 @@ func init() {
 	serverCmd.Flags().StringVar(&listeningAddress, "web.listen-address", ":9253", "Address on which to expose metrics and web interface.")
 	serverCmd.Flags().StringVar(&metricsEndpoint, "web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	serverCmd.Flags().BoolVar(&disableExporterMetrics, "web.disable-exporter-metrics", false, "Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).")
+	serverCmd.Flags().BoolVar(&disableProcessStateMetrics, "web.disable-process-state-metrics", false, "Exclude metrics about phpfpm process state. --phpfpm.fix-process-count will be set to false if the flag is set to ture.")
 	serverCmd.Flags().StringSliceVar(&scrapeURIs, "phpfpm.scrape-uri", []string{"tcp://127.0.0.1:9000/status"}, "FastCGI address, e.g. unix:///tmp/php.sock;/status or tcp://127.0.0.1:9000/status")
 	serverCmd.Flags().BoolVar(&fixProcessCount, "phpfpm.fix-process-count", false, "Enable to calculate process numbers via php-fpm_exporter since PHP-FPM sporadically reports wrong active/idle/total process numbers.")
 
@@ -148,11 +157,12 @@ func init() {
 	// Workaround since vipers BindEnv is currently not working as expected (see https://github.com/spf13/viper/issues/461)
 
 	envs := map[string]string{
-		"PHP_FPM_WEB_LISTEN_ADDRESS":           "web.listen-address",
-		"PHP_FPM_WEB_TELEMETRY_PATH":           "web.telemetry-path",
-		"PHP_FPM_WEB_DISABLE_EXPORTER_METRICS": "web.disable-exporter-metrics",
-		"PHP_FPM_SCRAPE_URI":                   "phpfpm.scrape-uri",
-		"PHP_FPM_FIX_PROCESS_COUNT":            "phpfpm.fix-process-count",
+		"PHP_FPM_WEB_LISTEN_ADDRESS":                "web.listen-address",
+		"PHP_FPM_WEB_TELEMETRY_PATH":                "web.telemetry-path",
+		"PHP_FPM_WEB_DISABLE_EXPORTER_METRICS":      "web.disable-exporter-metrics",
+		"PHP_FPM_WEB_DISABLE_PROCESS_STATE_METRICS": "web.disable-process-state-metrics",
+		"PHP_FPM_SCRAPE_URI":                        "phpfpm.scrape-uri",
+		"PHP_FPM_FIX_PROCESS_COUNT":                 "phpfpm.fix-process-count",
 	}
 
 	mapEnvVars(envs, serverCmd)

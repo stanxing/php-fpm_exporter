@@ -30,7 +30,8 @@ type Exporter struct {
 	mutex       sync.Mutex
 	PoolManager PoolManager
 
-	CountProcessState bool
+	DisableProcessStateMetrics bool
+	CountProcessState          bool
 
 	up                       *prometheus.Desc
 	scrapeFailues            *prometheus.Desc
@@ -188,7 +189,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		active, idle, total := CountProcessState(pool.Processes)
-		if !e.CountProcessState && (active != pool.ActiveProcesses || idle != pool.IdleProcesses) {
+		if !e.DisableProcessStateMetrics && !e.CountProcessState && (active != pool.ActiveProcesses || idle != pool.IdleProcesses) {
 			log.Error("Inconsistent active and idle processes reported. Set `--fix-process-count` to have this calculated by php-fpm_exporter instead.")
 		}
 
