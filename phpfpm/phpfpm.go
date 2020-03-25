@@ -59,7 +59,8 @@ type logger interface {
 
 // PoolManager manages all configured Pools
 type PoolManager struct {
-	Pools []Pool `json:"pools"`
+	OutputFullStatus bool
+	Pools            []Pool `json:"pools"`
 }
 
 // Pool describes a single PHP-FPM pool that can be reached via a Socket or TCP address
@@ -131,7 +132,7 @@ func (pm *PoolManager) Update() (err error) {
 		wg.Add(1)
 		go func(p *Pool) {
 			defer wg.Done()
-			if err := p.Update(); err != nil {
+			if err := p.Update(pm.OutputFullStatus); err != nil {
 				log.Error(err)
 			}
 		}(&pm.Pools[idx])
@@ -147,7 +148,7 @@ func (pm *PoolManager) Update() (err error) {
 }
 
 // Update will connect to PHP-FPM and retrieve the latest data for the pool.
-func (p *Pool) Update() (err error) {
+func (p *Pool) Update(outputFullStatus bool) (err error) {
 	p.ScrapeError = nil
 
 	scheme, address, path, err := parseURL(p.Address)
@@ -161,13 +162,16 @@ func (p *Pool) Update() (err error) {
 	}
 
 	defer fcgi.Close()
-
+	queryString := "json"
+	if outputFullStatus {
+		queryString = "json&full"
+	}
 	env := map[string]string{
 		"SCRIPT_FILENAME": path,
 		"SCRIPT_NAME":     path,
 		"SERVER_SOFTWARE": "go / php-fpm_exporter",
 		"REMOTE_ADDR":     "127.0.0.1",
-		"QUERY_STRING":    "json&full",
+		"QUERY_STRING":    queryString,
 	}
 
 	resp, err := fcgi.Get(env)
