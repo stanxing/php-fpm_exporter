@@ -147,7 +147,7 @@ func init() {
 	serverCmd.Flags().StringVar(&listeningAddress, "web.listen-address", ":9253", "Address on which to expose metrics and web interface.")
 	serverCmd.Flags().StringVar(&metricsEndpoint, "web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	serverCmd.Flags().BoolVar(&disableExporterMetrics, "web.disable-exporter-metrics", false, "Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).")
-	serverCmd.Flags().BoolVar(&disableProcessStateMetrics, "web.disable-process-state-metrics", false, "Exclude metrics about phpfpm process state. ")
+	serverCmd.Flags().BoolVar(&disableProcessStateMetrics, "web.disable-process-state-metrics", false, "Exclude metrics about phpfpm process state. --phpfpm.fix-process-count will be set to false if the flag is set to ture.")
 	serverCmd.Flags().StringSliceVar(&scrapeURIs, "phpfpm.scrape-uri", []string{"tcp://127.0.0.1:9000/status"}, "FastCGI address, e.g. unix:///tmp/php.sock;/status or tcp://127.0.0.1:9000/status")
 	serverCmd.Flags().BoolVar(&fixProcessCount, "phpfpm.fix-process-count", false, "Enable to calculate process numbers via php-fpm_exporter since PHP-FPM sporadically reports wrong active/idle/total process numbers.")
 
